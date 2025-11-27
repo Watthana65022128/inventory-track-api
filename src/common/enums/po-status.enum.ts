@@ -1,0 +1,7 @@
+export enum PoStatus {
+  DRAFT = 'DRAFT',
+  APPROVED = 'APPROVED',
+  RECEIVING = 'RECEIVING',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
