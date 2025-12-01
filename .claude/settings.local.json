@@ -3,7 +3,12 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(mkdir:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(nest g resource:*)",
+      "Bash(nest g module:*)",
+      "Bash(nest g service:*)",
+      "Bash(nest g controller:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
