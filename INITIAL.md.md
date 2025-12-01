@@ -127,12 +127,17 @@ CANCELLED
 - username: VARCHAR(50) UNIQUE
 - email: VARCHAR(100) UNIQUE
 - password: VARCHAR(255) // bcrypt hashed
-- first_name: VARCHAR(100)
-- last_name: VARCHAR(100)
+- first_name: VARCHAR(50)
+- last_name: VARCHAR(50)
+- phone: VARCHAR(20) // Thai format: 0XXXXXXXXX
 - role: ENUM (ADMIN, PO_CREATOR, PO_APPROVER, WAREHOUSE_STAFF, VIEWER)
 - is_active: BOOLEAN
+- refresh_token: TEXT (nullable)
 - created_at, updated_at: TIMESTAMP
+- deleted_at: TIMESTAMP (nullable) // Soft delete
 ```
+
+**Soft Delete**: ใช้ `DeleteDateColumn` เมื่อลบ record จะไม่ถูกลบออกจริง แต่จะ set `deleted_at` timestamp
 
 #### 2. categories (Hierarchical)
 ```typescript
@@ -156,7 +161,10 @@ CANCELLED
 - minimum_stock: DECIMAL(10,2)
 - is_active: BOOLEAN
 - created_at, updated_at: TIMESTAMP
+- deleted_at: TIMESTAMP (nullable) // Soft delete
 ```
+
+**Soft Delete Applied**: Items ใช้ soft delete เพื่อรักษา history ของ transactions
 
 #### 4. locations (Hierarchical)
 ```typescript
@@ -183,7 +191,10 @@ CANCELLED
 - address: TEXT
 - is_active: BOOLEAN
 - created_at, updated_at: TIMESTAMP
+- deleted_at: TIMESTAMP (nullable) // Soft delete
 ```
+
+**Soft Delete Applied**: Suppliers ใช้ soft delete เพื่อรักษา history ของ POs
 
 #### 6. purchase_orders
 ```typescript
@@ -639,6 +650,36 @@ GET    /api/inventory/reports/low-stock
 5. All stock updates must be in transactions
 6. Every stock change creates immutable movement record
 7. PO status auto-updates based on receipt progress
+
+## Soft Delete Policy
+
+**Entities with Soft Delete** (เก็บ history):
+- ✅ **users**: รักษา created_by, updated_by references
+- ✅ **items**: รักษา transaction history (POs, GRs, Stock Movements)
+- ✅ **suppliers**: รักษา PO history
+- ⚠️ **categories**: ไม่ soft delete (ถ้าลบต้องย้าย items ก่อน)
+- ⚠️ **locations**: ไม่ soft delete (ต้องว่างก่อนลบ)
+
+**Entities without Soft Delete** (hard delete or immutable):
+- ❌ **purchase_orders**: Immutable (ใช้ status CANCELLED แทน)
+- ❌ **goods_receipts**: Immutable (ไม่สามารถลบได้)
+- ❌ **stock_movements**: Immutable log (ไม่สามารถลบได้)
+- ❌ **stock_balance**: Snapshot (อัปเดตได้ ไม่ลบ)
+
+**TypeORM Implementation**:
+```typescript
+// Entity with Soft Delete
+@Entity()
+export class User {
+  @DeleteDateColumn()
+  deleted_at: Date;
+}
+
+// Service Methods
+await repository.softRemove(entity);  // Soft delete
+await repository.restore(id);         // Restore
+await repository.find({ withDeleted: true });  // Include deleted
+```
 
 ## Database Migration Strategy
 
