@@ -40,7 +40,8 @@ export class AuthService {
     await this.usersService.updateRefreshToken(user.id, tokens.refresh_token);
 
     return {
-      ...tokens,
+      message: 'Login successful',
+      ...tokens, 
       user: {
         id: user.id,
         username: user.username,
@@ -56,7 +57,11 @@ export class AuthService {
 
   async register(createUserDto: CreateUserDto): Promise<LoginResponse> {
     const user = await this.usersService.create(createUserDto);
-    return this.login(user);
+    const loginResponse = await this.login(user);
+    return {
+      ...loginResponse,
+      message: 'User registered successfully',
+    };
   }
 
   async logout(userId: string): Promise<void> {

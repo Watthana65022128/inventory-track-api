@@ -28,6 +28,7 @@ export interface AuthTokens {
  * Includes both tokens and user information
  */
 export interface LoginResponse extends AuthTokens {
+  message: string;
   user: {
     id: string;
     username: string;

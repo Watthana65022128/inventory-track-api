@@ -37,7 +37,10 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout current user' })
   async logout(@CurrentUserDecorator() user: CurrentUser) {
     await this.authService.logout(user.id);
-    return { message: 'Logged out successfully' };
+    return {
+      message: 'Logged out successfully',
+      statusCode: HttpStatus.OK,
+    };
   }
 
   @Post('refresh')
@@ -45,6 +48,10 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@CurrentUserDecorator() user: CurrentUser) {
-    return this.authService.refreshTokens(user.id);
+    const tokens = await this.authService.refreshTokens(user.id);
+    return {
+      message: 'Token refreshed successfully',
+      ...tokens,
+    };
   }
 }
