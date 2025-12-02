@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
@@ -18,8 +18,8 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async validateUser(username: string, password: string): Promise<User | null> {
-    const user = await this.usersService.findByUsername(username);
+  async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.usersService.findByEmail(email);
 
     if (!user || !user.is_active) {
       return null;
