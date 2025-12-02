@@ -81,7 +81,8 @@ src/
 - **PO_CREATOR**: สร้าง PO (ไม่สามารถอนุมัติ PO ของตัวเองได้)
 - **PO_APPROVER**: อนุมัติ PO เท่านั้น
 - **WAREHOUSE_STAFF**: สร้าง GR, ย้ายสต็อก, ปรับสต็อก
-- **VIEWER**: ดูข้อมูลอย่างเดียว
+
+**Note**: พนักงานทุกคนสามารถดูข้อมูลได้ตาม role ของตัวเอง ไม่จำเป็นต้องมี VIEWER role แยก
 
 ### Purchase Order Workflow
 **Status Flow:**
@@ -130,7 +131,7 @@ CANCELLED
 - first_name: VARCHAR(50)
 - last_name: VARCHAR(50)
 - phone: VARCHAR(20) // Thai format: 0XXXXXXXXX
-- role: ENUM (ADMIN, PO_CREATOR, PO_APPROVER, WAREHOUSE_STAFF, VIEWER)
+- role: ENUM (ADMIN, PO_CREATOR, PO_APPROVER, WAREHOUSE_STAFF)
 - is_active: BOOLEAN
 - refresh_token: TEXT (nullable)
 - created_at, updated_at: TIMESTAMP

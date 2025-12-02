@@ -24,12 +24,15 @@ export class CreateUserDto {
   username: string;
 
   @ApiProperty({
-    example: 'john@example.com',
-    description: 'Valid email address',
+    example: 'john@company.com',
+    description: 'Valid email address with allowed domain (@company.com, @gmail.com)',
   })
   @IsNotEmpty({ message: 'Email is required' })
   @IsEmail({}, { message: 'Please provide a valid email address' })
   @MaxLength(100, { message: 'Email must not exceed 100 characters' })
+  @Matches(/^[\w-\.]+@(company\.com|gmail\.com)$/, {
+    message: 'Email must be from allowed domains: @company.com, @gmail.com',
+  })
   email: string;
 
   @ApiProperty({
@@ -56,7 +59,7 @@ export class CreateUserDto {
   )
   password: string;
 
-  @ApiPropertyOptional({ enum: UserRole, default: UserRole.VIEWER })
+  @ApiPropertyOptional({ enum: UserRole, default: UserRole.WAREHOUSE_STAFF })
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;

@@ -40,14 +40,32 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.userRepository.find({
-      select: ['id', 'username', 'email', 'role', 'is_active', 'first_name', 'created_at', 'updated_at'],
+      select: [
+        'id',
+        'username',
+        'email',
+        'role',
+        'is_active',
+        'first_name',
+        'created_at',
+        'updated_at',
+      ],
     });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: ['id', 'username', 'email', 'role', 'is_active', 'first_name', 'created_at', 'updated_at'],
+      select: [
+        'id',
+        'username',
+        'email',
+        'role',
+        'is_active',
+        'first_name',
+        'created_at',
+        'updated_at',
+      ],
     });
 
     if (!user) {
@@ -106,7 +124,10 @@ export class UsersService {
     return this.findOne(id);
   }
 
-  async updateRefreshToken(userId: string, refreshToken: string | null): Promise<void> {
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string | null,
+  ): Promise<void> {
     await this.userRepository.update(userId, { refresh_token: refreshToken });
   }
 }

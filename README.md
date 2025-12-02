@@ -93,7 +93,8 @@ DELETE /api/users/:id
 2. **PO_CREATOR** - สร้าง PO
 3. **PO_APPROVER** - อนุมัติ PO
 4. **WAREHOUSE_STAFF** - รับของ, ย้ายสต็อก
-5. **VIEWER** - ดูข้อมูลอย่างเดียว
+
+**Note**: พนักงานทุกคนสามารถดูข้อมูลได้ตาม role ของตัวเอง
 
 ## 🧪 Testing
 

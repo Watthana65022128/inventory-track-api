@@ -30,7 +30,7 @@ export class User {
   @Column({
     type: 'enum',
     enum: UserRole,
-    default: UserRole.VIEWER,
+    default: UserRole.WAREHOUSE_STAFF,
   })
   role: UserRole;
 
