@@ -588,3 +588,368 @@ http://localhost:3000/api/docs
 - Background jobs (Bull queue)
 
 **Recommendation**: Start simple, add Redis when scaling needs arise.
+
+---
+
+## Session: 2025-12-02 - Phase 2.5: Authentication Refinements & Bug Fixes
+
+### 🎯 Objectives
+Refine authentication system, fix bugs, improve security, and enhance user experience
+
+---
+
+### ✅ Completed Tasks (Session 3)
+
+#### 1. Removed VIEWER Role
+**Reason**: All employees can view data based on their role permissions - no need for a separate VIEWER role
+
+**Files Modified:**
+- `src/common/enums/role.enum.ts` - Removed VIEWER enum value
+- `src/modules/users/entities/user.entity.ts` - Changed default role to WAREHOUSE_STAFF
+- `src/modules/users/dto/create-user.dto.ts` - Updated default role in DTO
+- `INITIAL.md.md`, `README.md`, `CLAUDE.md` - Updated documentation
+
+**Remaining Roles:**
+```typescript
+enum UserRole {
+  ADMIN = 'ADMIN',
+  PO_CREATOR = 'PO_CREATOR',
+  PO_APPROVER = 'PO_APPROVER',
+  WAREHOUSE_STAFF = 'WAREHOUSE_STAFF',  // Default role
+}
+```
+
+---
+
+#### 2. Fixed JWT Token Expiration Issue
+**Problem**: `expires_in` was returning `1` second instead of `3600` seconds (1 hour)
+
+**Root Cause**: `.env` file used string format `JWT_EXPIRES_IN=1h` but JWT library expected numeric seconds
+
+**Solution**: Changed `.env` to use numeric values:
+```env
+JWT_EXPIRES_IN=3600        # 1 hour in seconds
+JWT_REFRESH_EXPIRES_IN=604800  # 7 days in seconds
+```
+
+**Files Modified:**
+- `.env` - Updated JWT expiration values to numeric seconds
+
+---
+
+#### 3. Changed Login to Email-Based Authentication
+**Problem**: Login was using username, but requirement was email-based login
+
+**Changes:**
+1. **LoginDto** - Changed from `username` to `email` field
+   - Added `@IsEmail()` validator
+   - Updated example and description
+
+2. **LocalStrategy** - Updated to use `email` field
+   ```typescript
+   super({
+     usernameField: 'email',  // Changed from 'username'
+     passwordField: 'password',
+   });
+   ```
+
+3. **AuthService.validateUser()** - Now validates by email only
+   ```typescript
+   async validateUser(email: string, password: string): Promise<User | null> {
+     const user = await this.usersService.findByEmail(email);
+     // ...
+   }
+   ```
+
+**Login Request Format:**
+```json
+POST /api/auth/login
+{
+  "email": "user@company.com",
+  "password": "Password123!"
+}
+```
+
+**Files Modified:**
+- `src/modules/users/dto/login.dto.ts`
+- `src/modules/auth/strategies/local.strategy.ts`
+- `src/modules/auth/auth.service.ts`
+
+---
+
+#### 4. Added Response Messages
+**Enhancement**: All authentication endpoints now return descriptive messages
+
+**Responses:**
+```typescript
+// Login
+{ "message": "Login successful", ... }
+
+// Register
+{ "message": "User registered successfully", ... }
+
+// Logout
+{ "message": "Logged out successfully", "statusCode": 200 }
+
+// Refresh
+{ "message": "Token refreshed successfully", ... }
+```
+
+**Files Modified:**
+- `src/common/interfaces/auth.interface.ts` - Added `message` field to LoginResponse
+- `src/modules/auth/auth.service.ts` - Added messages to login/register
+- `src/modules/auth/auth.controller.ts` - Added messages to logout/refresh
+
+---
+
+#### 5. Fixed Global JWT Guard Configuration
+**Problem**: Logout endpoint returned error: `Cannot read properties of undefined (reading 'id')`
+
+**Root Cause**: JWT Guard was not configured globally, so protected endpoints didn't have user context
+
+**Solution**: Added Global JWT Guard in `app.module.ts`
+```typescript
+providers: [
+  AppService,
+  {
+    provide: APP_GUARD,
+    useClass: JwtAuthGuard,
+  },
+],
+```
+
+**Result:**
+- ✅ All endpoints require JWT authentication by default
+- ✅ `@Public()` decorator works for login/register
+- ✅ `@CurrentUser()` decorator now works properly
+- ✅ Logout endpoint works correctly
+
+**Files Modified:**
+- `src/app.module.ts` - Added APP_GUARD provider
+
+---
+
+#### 6. Email Domain Validation
+**Confirmed**: Email domain validation is active using Regex approach
+
+**Current Implementation:**
+```typescript
+@Matches(/^[\w-\.]+@(company\.com|gmail\.com)$/, {
+  message: 'Email must be from allowed domains: @company.com, @gmail.com',
+})
+```
+
+**Allowed Domains:**
+- `@company.com` ✅
+- `@gmail.com` ✅
+
+**Removed**: Custom email domain validator (unused)
+- Deleted `src/common/validators/email-domain.validator.ts`
+
+---
+
+#### 7. Code Review: auth.service.ts
+
+**Issues Found:**
+
+🔴 **Critical:**
+1. **Missing validation in `refreshTokens()`**
+   - No check if user exists or is active
+   - Could crash if user not found
+
+2. **No refresh token verification**
+   - Doesn't verify refresh token matches database
+   - Old/revoked tokens could still work
+
+**Recommendations for Future:**
+```typescript
+async refreshTokens(userId: string, refreshToken: string): Promise<AuthTokens> {
+  const user = await this.usersService.findOne(userId);
+
+  if (!user || !user.is_active) {
+    throw new UnauthorizedException('User not found or inactive');
+  }
+
+  // Verify refresh token matches database
+  if (!user.refresh_token || user.refresh_token !== refreshToken) {
+    throw new UnauthorizedException('Invalid refresh token');
+  }
+
+  const tokens = await this.generateTokens(user);
+  await this.usersService.updateRefreshToken(user.id, tokens.refresh_token);
+
+  return tokens;
+}
+```
+
+---
+
+### 🔧 Technical Improvements
+
+#### Security Enhancements
+- ✅ Email-based authentication (more secure than username)
+- ✅ Global JWT Guard (all routes protected by default)
+- ✅ Email domain whitelisting active
+- ✅ Clear error messages without exposing sensitive info
+
+#### Developer Experience
+- ✅ Response messages for better API clarity
+- ✅ Swagger documentation auto-updated
+- ✅ Consistent error handling
+- ✅ Clean, maintainable code structure
+
+---
+
+### 📊 Session Statistics
+
+**Files Modified:** 11 files
+**Files Deleted:** 1 file (email-domain.validator.ts)
+**Build Status:** ✅ Success
+**Test Status:** Manual API testing passed
+
+---
+
+### 🐛 Issues Fixed
+
+1. ✅ JWT expiration showing 1 second instead of 3600
+2. ✅ Login not working with email
+3. ✅ Logout endpoint error (undefined user.id)
+4. ✅ Missing response messages
+5. ✅ VIEWER role removed per requirements
+
+---
+
+### 🎯 API Usage (Updated)
+
+#### Register:
+```bash
+POST /api/auth/register
+{
+  "username": "john_doe",
+  "email": "john@company.com",
+  "password": "SecurePass123!",
+  "first_name": "John",
+  "last_name": "Doe",
+  "phone": "0812345678",
+  "role": "WAREHOUSE_STAFF"
+}
+```
+
+#### Login (Email-based):
+```bash
+POST /api/auth/login
+{
+  "email": "john@company.com",
+  "password": "SecurePass123!"
+}
+```
+
+#### Response:
+```json
+{
+  "message": "Login successful",
+  "access_token": "eyJhbGc...",
+  "refresh_token": "eyJhbGc...",
+  "expires_in": 3600,
+  "user": {
+    "id": "uuid",
+    "username": "john_doe",
+    "email": "john@company.com",
+    "role": "WAREHOUSE_STAFF",
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone": "0812345678",
+    "is_active": true
+  }
+}
+```
+
+#### Logout:
+```bash
+POST /api/auth/logout
+Authorization: Bearer YOUR_ACCESS_TOKEN
+
+Response:
+{
+  "message": "Logged out successfully",
+  "statusCode": 200
+}
+```
+
+---
+
+### 📝 Environment Variables (Updated)
+
+```env
+# Application
+NODE_ENV=development
+PORT=3000
+API_PREFIX=api
+
+# Database
+DB_HOST=localhost
+DB_PORT=5433
+DB_USERNAME=postgres
+DB_PASSWORD=Watthana_04
+DB_DATABASE=inventory_tracking
+
+# JWT (Updated to numeric seconds)
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRES_IN=3600
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production
+JWT_REFRESH_EXPIRES_IN=604800
+
+# CORS
+CORS_ORIGIN=http://localhost:3000
+```
+
+---
+
+### 🎉 Session 3 Status: COMPLETE ✅
+
+**Authentication System Improvements:**
+- ✅ Email-based login implemented
+- ✅ Global JWT Guard configured
+- ✅ Response messages added
+- ✅ JWT expiration fixed
+- ✅ VIEWER role removed
+- ✅ Email domain validation confirmed
+- ✅ Code reviewed and documented
+
+**Ready for:**
+- User testing
+- Phase 3: Business modules (Categories, Items, Suppliers, Locations)
+
+---
+
+### 💡 Lessons Learned (Session 3)
+
+1. **JWT Configuration**
+   - Always use numeric seconds for JWT expiration
+   - String formats like "1h" can cause unexpected behavior
+   - .env changes require server restart
+
+2. **Global Guards**
+   - Register guards at app.module level for global protection
+   - Use `@Public()` decorator for exceptions (login/register)
+   - Ensures consistent authentication across all endpoints
+
+3. **API Design**
+   - Include descriptive messages in all responses
+   - Helps frontend developers understand what happened
+   - Improves debugging and user experience
+
+4. **Code Review Benefits**
+   - Found potential security issues early
+   - Documented improvements for future implementation
+   - Maintains code quality standards
+
+---
+
+### 🚀 Next Steps (Phase 3)
+
+Same as before - ready to implement business modules:
+1. Categories Module (hierarchical)
+2. Items/Products Module
+3. Locations Module (warehouse structure)
+4. Suppliers Module
