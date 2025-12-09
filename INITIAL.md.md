@@ -78,11 +78,35 @@ src/
 
 ### Roles & Permissions
 - **ADMIN**: สิทธิ์เต็มทุกอย่าง
-- **PO_CREATOR**: สร้าง PO (ไม่สามารถอนุมัติ PO ของตัวเองได้)
+- **PR_CREATOR**: พนักงานทั่วไป - สร้าง PR (ใบขอซื้อ)
+- **PR_APPROVER**: อนุมัติ PR
+- **PO_CREATOR**: พนักงานจัดซื้อ - สร้าง PO จาก PR ที่อนุมัติแล้ว (ไม่สามารถอนุมัติ PO ของตัวเองได้)
 - **PO_APPROVER**: อนุมัติ PO เท่านั้น
 - **WAREHOUSE_STAFF**: สร้าง GR, ย้ายสต็อก, ปรับสต็อก
 
 **Note**: พนักงานทุกคนสามารถดูข้อมูลได้ตาม role ของตัวเอง ไม่จำเป็นต้องมี VIEWER role แยก
+
+### Purchase Requisition (PR) Workflow
+**Status Flow:**
+```
+DRAFT → PENDING → APPROVED → CONVERTED (to PO)
+   ↓       ↓
+CANCELLED  REJECTED
+```
+
+- **DRAFT**: สร้างใหม่ ยังแก้ไขได้
+- **PENDING**: ส่งขออนุมัติแล้ว (รอ PR_APPROVER)
+- **APPROVED**: PR_APPROVER อนุมัติแล้ว (พร้อมแปลงเป็น PO)
+- **REJECTED**: PR_APPROVER ปฏิเสธ
+- **CANCELLED**: ยกเลิก (ทำได้ก่อนอนุมัติเท่านั้น)
+- **CONVERTED**: แปลงเป็น PO แล้ว
+
+**Rules:**
+- PR Creator สามารถแก้ไข PR ได้เฉพาะ status = DRAFT
+- ส่งขออนุมัติ → status = PENDING
+- PR_APPROVER อนุมัติ → status = APPROVED
+- PO_CREATOR แปลง PR → PO → status = CONVERTED
+- เมื่อ CONVERTED แล้วไม่สามารถแก้ไข PR ได้
 
 ### Purchase Order Workflow
 **Status Flow:**
@@ -99,7 +123,9 @@ CANCELLED
 - **CANCELLED**: ยกเลิก (ทำได้ก่อนรับของเท่านั้น)
 
 **Rules:**
+- PO ถูกสร้างจาก PR ที่ status = APPROVED
 - PO Creator ≠ PO Approver (คนสร้างไม่สามารถอนุมัติเอง)
+- PO_CREATOR เลือก supplier, ต่อรองราคา, ใส่รายละเอียดเพิ่มเติม
 - สามารถรับของเป็นครั้งๆ ได้ (Partial GR)
 - เมื่อรับของบางส่วน → status = RECEIVING
 - เมื่อรับของครบทุก item → status = COMPLETED
@@ -197,10 +223,40 @@ CANCELLED
 
 **Soft Delete Applied**: Suppliers ใช้ soft delete เพื่อรักษา history ของ POs
 
-#### 6. purchase_orders
+#### 6. purchase_requisitions
+```typescript
+- id: UUID (PK)
+- pr_number: VARCHAR(50) UNIQUE
+- status: ENUM (DRAFT, PENDING, APPROVED, REJECTED, CANCELLED, CONVERTED)
+- request_date: DATE
+- required_date: DATE
+- purpose: TEXT // วัตถุประสงค์การขอซื้อ
+- total_estimated_amount: DECIMAL(12,2)
+- notes: TEXT
+- created_by_id: UUID (FK → users.id)
+- approved_by_id: UUID (FK → users.id)
+- approved_at: TIMESTAMP
+- rejected_reason: TEXT
+- created_at, updated_at: TIMESTAMP
+```
+
+#### 7. purchase_requisition_items
+```typescript
+- id: UUID (PK)
+- purchase_requisition_id: UUID (FK → purchase_requisitions.id) CASCADE
+- item_id: UUID (FK → items.id)
+- quantity_requested: DECIMAL(10,2)
+- estimated_unit_price: DECIMAL(10,2)
+- estimated_total_price: DECIMAL(12,2)
+- notes: TEXT
+- created_at: TIMESTAMP
+```
+
+#### 8. purchase_orders
 ```typescript
 - id: UUID (PK)
 - po_number: VARCHAR(50) UNIQUE
+- purchase_requisition_id: UUID (FK → purchase_requisitions.id) // อ้างอิง PR
 - supplier_id: UUID (FK → suppliers.id)
 - status: ENUM (DRAFT, APPROVED, RECEIVING, COMPLETED, CANCELLED)
 - order_date: DATE
@@ -214,7 +270,7 @@ CANCELLED
 - CONSTRAINT: approved_by_id != created_by_id
 ```
 
-#### 7. purchase_order_items
+#### 9. purchase_order_items
 ```typescript
 - id: UUID (PK)
 - purchase_order_id: UUID (FK → purchase_orders.id) CASCADE
@@ -227,7 +283,7 @@ CANCELLED
 - created_at: TIMESTAMP
 ```
 
-#### 8. goods_receipts
+#### 10. goods_receipts
 ```typescript
 - id: UUID (PK)
 - gr_number: VARCHAR(50) UNIQUE
@@ -238,7 +294,7 @@ CANCELLED
 - created_at, updated_at: TIMESTAMP
 ```
 
-#### 9. goods_receipt_items
+#### 11. goods_receipt_items
 ```typescript
 - id: UUID (PK)
 - goods_receipt_id: UUID (FK → goods_receipts.id) CASCADE
@@ -249,7 +305,7 @@ CANCELLED
 - created_at: TIMESTAMP
 ```
 
-#### 10. stock_movements
+#### 12. stock_movements
 ```typescript
 - id: UUID (PK)
 - item_id: UUID (FK → items.id)
@@ -264,7 +320,7 @@ CANCELLED
 - created_at: TIMESTAMP
 ```
 
-#### 11. stock_balance
+#### 13. stock_balance
 ```typescript
 - id: UUID (PK)
 - item_id: UUID (FK → items.id)
@@ -295,8 +351,15 @@ CREATE INDEX idx_locations_code ON locations(code);
 CREATE INDEX idx_locations_parent ON locations(parent_id);
 CREATE INDEX idx_locations_path ON locations(path);
 
+-- Purchase Requisitions
+CREATE INDEX idx_pr_number ON purchase_requisitions(pr_number);
+CREATE INDEX idx_pr_status ON purchase_requisitions(status);
+CREATE INDEX idx_pr_created_by ON purchase_requisitions(created_by_id);
+CREATE INDEX idx_pr_request_date ON purchase_requisitions(request_date);
+
 -- Purchase Orders
 CREATE INDEX idx_po_number ON purchase_orders(po_number);
+CREATE INDEX idx_po_pr ON purchase_orders(purchase_requisition_id);
 CREATE INDEX idx_po_supplier ON purchase_orders(supplier_id);
 CREATE INDEX idx_po_status ON purchase_orders(status);
 CREATE INDEX idx_po_order_date ON purchase_orders(order_date);
@@ -347,6 +410,7 @@ src/
     ├── items/
     ├── locations/
     ├── suppliers/
+    ├── purchase-requisitions/
     ├── purchase-orders/
     ├── goods-receipts/
     └── inventory/
@@ -383,7 +447,44 @@ src/
 - CRUD operations
 - Supplier management
 
-### 7. PurchaseOrdersModule
+### 7. PurchaseRequisitionsModule
+**Key Operations:**
+- Create PR (PR_CREATOR, ADMIN)
+- Submit PR for approval (PR_CREATOR)
+- Approve/Reject PR (PR_APPROVER, ADMIN)
+- Cancel PR (PR_CREATOR before APPROVED)
+- List & Filter PRs
+- Get PR details with items
+
+**Business Logic:**
+```typescript
+// Create PR
+- Validate all items exist
+- Generate PR number: PR-YYYYMMDD-XXXX
+- Calculate total_estimated_amount
+- Set status = DRAFT
+- Set created_by_id = current user
+
+// Submit PR for approval
+- Check status = DRAFT
+- Set status = PENDING
+
+// Approve PR
+- Check status = PENDING
+- Set status = APPROVED
+- Set approved_by_id, approved_at
+
+// Reject PR
+- Check status = PENDING
+- Set status = REJECTED
+- Set rejected_reason
+
+// Cancel PR
+- Check status = DRAFT or PENDING
+- Set status = CANCELLED
+```
+
+### 8. PurchaseOrdersModule
 **Key Operations:**
 - Create PO (PO_CREATOR, ADMIN)
 - Approve PO (PO_APPROVER, ADMIN)
@@ -393,13 +494,16 @@ src/
 
 **Business Logic:**
 ```typescript
-// Create PO
+// Create PO from PR
+- Validate PR exists and status = APPROVED
 - Validate supplier exists
-- Validate all items exist
+- Copy items from PR
+- PO_CREATOR can adjust quantities, add unit_price
 - Generate PO number: PO-YYYYMMDD-XXXX
 - Calculate total_amount
 - Set status = DRAFT
 - Set created_by_id = current user
+- Set purchase_requisition_id = PR id
 
 // Approve PO
 - Check status = DRAFT
@@ -412,7 +516,7 @@ src/
 - Set status = CANCELLED
 ```
 
-### 8. GoodsReceiptsModule
+### 9. GoodsReceiptsModule
 **Key Operations:**
 - Create GR (WAREHOUSE_STAFF, ADMIN)
 - Update PO status automatically
@@ -437,7 +541,7 @@ src/
 8. Commit transaction
 ```
 
-### 9. InventoryModule
+### 10. InventoryModule
 **Key Operations:**
 - Get stock balance (by item/location)
 - Get stock movements history
@@ -511,6 +615,19 @@ PATCH  /api/suppliers/:id
 DELETE /api/suppliers/:id (soft delete)
 ```
 
+### Purchase Requisitions
+```
+GET    /api/purchase-requisitions
+POST   /api/purchase-requisitions
+GET    /api/purchase-requisitions/:id
+PATCH  /api/purchase-requisitions/:id
+PATCH  /api/purchase-requisitions/:id/submit
+PATCH  /api/purchase-requisitions/:id/approve
+PATCH  /api/purchase-requisitions/:id/reject
+PATCH  /api/purchase-requisitions/:id/cancel
+DELETE /api/purchase-requisitions/:id (only DRAFT)
+```
+
 ### Purchase Orders
 ```
 GET    /api/purchase-orders
@@ -561,35 +678,41 @@ GET    /api/inventory/reports/low-stock
 14. Create SuppliersModule
 15. Create ItemsModule (linked to categories)
 
-### Phase 4: Core Business Logic (Days 8-11)
-16. Create PurchaseOrdersModule
+### Phase 4: Core Business Logic (Days 8-12)
+16. Create PurchaseRequisitionsModule
+    - PurchaseRequisition entity
+    - PurchaseRequisitionItem entity
+    - Create PR service
+    - Submit/Approve/Reject workflow
+    - Cancel workflow
+17. Create PurchaseOrdersModule
     - PurchaseOrder entity
     - PurchaseOrderItem entity
-    - Create PO service
+    - Create PO from PR service
     - Approve workflow
     - Cancel workflow
-17. Create InventoryModule
+18. Create InventoryModule
     - StockMovement entity
     - StockBalance entity
     - Basic stock queries
 
-### Phase 5: Warehouse Operations (Days 12-14)
-18. Create GoodsReceiptsModule
+### Phase 5: Warehouse Operations (Days 13-15)
+19. Create GoodsReceiptsModule
     - GoodsReceipt entity
     - GoodsReceiptItem entity
     - Transaction logic for GR creation
     - Auto-update stock
     - Auto-update PO status
-19. Complete InventoryModule
+20. Complete InventoryModule
     - Transfer stock
     - Adjust stock
     - Low stock report
 
-### Phase 6: Testing & Documentation (Days 15-16)
-20. Write unit tests for critical services
-21. Write E2E tests for main workflows
-22. Complete Swagger documentation
-23. Create README with setup instructions
+### Phase 6: Testing & Documentation (Days 16-18)
+21. Write unit tests for critical services
+22. Write E2E tests for main workflows (PR → PO → GR)
+23. Complete Swagger documentation
+24. Create README with setup instructions
 
 ## Required NPM Packages
 
@@ -644,8 +767,11 @@ GET    /api/inventory/reports/low-stock
 
 ## Critical Business Rules to Implement
 
-1. PO Creator cannot approve their own PO
-2. Cannot cancel PO if GR already created
+1. PR must be APPROVED before creating PO
+2. PR Creator can only edit when status = DRAFT
+3. PO must reference an APPROVED PR
+4. PO Creator cannot approve their own PO
+5. Cannot cancel PO if GR already created
 3. Cannot receive more quantity than ordered
 4. Stock balance cannot be negative
 5. All stock updates must be in transactions
