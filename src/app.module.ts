@@ -8,6 +8,7 @@ import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -32,7 +33,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     }),
     UsersModule,
     AuthModule,
-    // Modules will be added here
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [

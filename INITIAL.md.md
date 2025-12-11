@@ -50,10 +50,18 @@ src/
 - ✅ JWT Authentication แบบ global guard
 - ✅ Role-based access control (RBAC)
 
-### 📦 Next Steps (Phase 2)
-- [ ] Create User entity
-- [ ] Create AuthModule (JWT strategy, login, register)
-- [ ] Create UsersModule (CRUD with role management)
+### ✅ Phase 2: Authentication & Users (COMPLETED)
+- [x] Create User entity
+- [x] Create AuthModule (JWT strategy, login, register, refresh token)
+- [x] Create UsersModule (CRUD with role management)
+
+### 📦 Next Steps (Phase 3) - ⚠️ MUST DO BEFORE PR MODULE
+**Why Phase 3 First?** PR creation requires existing items in the system. Users will SELECT items from the master catalog when creating PRs, not create new items on-the-fly.
+
+- [ ] Create CategoriesModule (hierarchical structure)
+- [ ] Create ItemsModule (SKU, name, category, UOM, min_stock)
+- [ ] Create LocationsModule (warehouse structure)
+- [ ] Create SuppliersModule (supplier database)
 
 ---
 
@@ -673,16 +681,35 @@ GET    /api/inventory/reports/low-stock
 11. Create UsersModule (CRUD with role management)
 
 ### Phase 3: Master Data Modules (Days 5-7)
+**⚠️ CRITICAL: Must complete BEFORE Phase 4**  
+**Reason**: PR creation requires existing items from master data. Users select from item catalog, not create new items.
+
 12. Create CategoriesModule (with hierarchical support)
-13. Create LocationsModule (with hierarchical support)
-14. Create SuppliersModule
-15. Create ItemsModule (linked to categories)
+    - Category entity
+    - CRUD operations
+    - GET /categories/tree (hierarchical structure)
+    - Validation: Cannot delete if has child categories or items
+13. Create ItemsModule (linked to categories)
+    - Item entity (SKU, name, description, category, UOM, min_stock)
+    - CRUD operations with soft delete
+    - Search & filter by category, SKU, name
+    - Validation: SKU uniqueness
+14. Create LocationsModule (with hierarchical support)
+    - Location entity (code, name, type, parent, capacity)
+    - CRUD operations
+    - GET /locations/tree
+    - Validation: Cannot delete if has stock
+15. Create SuppliersModule
+    - Supplier entity (code, name, contact info)
+    - CRUD operations with soft delete
+    - Validation: Code uniqueness
 
 ### Phase 4: Core Business Logic (Days 8-12)
 16. Create PurchaseRequisitionsModule
     - PurchaseRequisition entity
     - PurchaseRequisitionItem entity
-    - Create PR service
+    - Create PR service (**items selected from master data**)
+    - Validate: All item_id must exist in items table
     - Submit/Approve/Reject workflow
     - Cancel workflow
 17. Create PurchaseOrdersModule

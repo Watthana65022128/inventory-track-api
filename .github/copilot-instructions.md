@@ -185,7 +185,12 @@ await this.dataSource.transaction(async (manager) => {
 ### Implemented Modules (as of Dec 2025)
 - ✅ **AuthModule**: Login, register, refresh tokens, logout
 - ✅ **UsersModule**: CRUD with soft delete, role management
-- ⏳ **PurchaseRequisitionsModule**: Next to implement
+- ⏳ **Phase 3 - Master Data** (MUST complete first):
+  - **CategoriesModule**: Hierarchical categories
+  - **ItemsModule**: Item catalog (SKU, name, UOM, min_stock)
+  - **LocationsModule**: Warehouse structure
+  - **SuppliersModule**: Supplier management
+- ⏳ **PurchaseRequisitionsModule**: PR selects items from master data
 - ⏳ **PurchaseOrdersModule**: Creates PO from approved PR
 - ⏳ **GoodsReceiptsModule**: Transaction-based stock updates
 
@@ -222,11 +227,19 @@ npm run test
 
 ## Next Implementation Priority
 
-1. **PurchaseRequisitionsModule** - PR workflow (DRAFT → APPROVED)
-2. **PurchaseOrdersModule** - PO creation from PR
-3. Master data (Categories, Items, Locations, Suppliers)
-4. **GoodsReceiptsModule** - Transaction-based stock updates
-5. Inventory reports & stock transfers
+### ⚠️ Phase 3: Master Data (MUST DO FIRST)
+1. **CategoriesModule** - Hierarchical categories for items
+2. **ItemsModule** - Item catalog (SKU, name, UOM, category, min_stock)
+3. **LocationsModule** - Warehouse structure (WAREHOUSE → ZONE → RACK → SHELF)
+4. **SuppliersModule** - Supplier database
+
+**Reason**: PR creation requires existing items. Users select from catalog, not create new items.
+
+### Phase 4: Procurement Workflow
+5. **PurchaseRequisitionsModule** - PR workflow (DRAFT → APPROVED)
+6. **PurchaseOrdersModule** - PO creation from PR with supplier selection
+7. **GoodsReceiptsModule** - Transaction-based stock updates
+8. Inventory reports & stock transfers
 
 ---
 
