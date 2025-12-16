@@ -9,6 +9,7 @@ import jwtConfig from './config/jwt.config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { ItemsModule } from './modules/items/items.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -34,6 +35,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     UsersModule,
     AuthModule,
     CategoriesModule,
+    ItemsModule,
   ],
   controllers: [AppController],
   providers: [
