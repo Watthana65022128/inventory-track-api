@@ -16,7 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/role.enum';
 
-@ApiTags('users')
+@ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
 @UseInterceptors(ClassSerializerInterceptor)

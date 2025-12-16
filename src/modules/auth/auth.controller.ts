@@ -8,7 +8,7 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CurrentUser as CurrentUserDecorator } from '../../common/decorators/current-user.decorator';
 import type { CurrentUser } from '../../common/interfaces/auth.interface';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

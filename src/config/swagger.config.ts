@@ -6,15 +6,6 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('Inventory Tracking API')
     .setDescription('Backend API for Inventory Tracking System')
     .setVersion('1.0')
-    .addTag('auth', 'Authentication endpoints')
-    .addTag('users', 'User management')
-    .addTag('categories', 'Category management')
-    .addTag('items', 'Item management')
-    .addTag('locations', 'Location management')
-    .addTag('suppliers', 'Supplier management')
-    .addTag('purchase-orders', 'Purchase Order management')
-    .addTag('goods-receipts', 'Goods Receipt management')
-    .addTag('inventory', 'Inventory and stock management')
     .addBearerAuth(
       {
         type: 'http',
