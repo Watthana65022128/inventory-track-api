@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -35,6 +36,12 @@ export class UsersService {
     }
 
     const user = this.userRepository.create(createUserDto);
+    
+    // Hash password before saving
+    if (user.password) {
+      user.password = await this.hashPassword(user.password);
+    }
+    
     return this.userRepository.save(user);
   }
 
@@ -56,18 +63,7 @@ export class UsersService {
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { id },
-      select: [
-        'id',
-        'username',
-        'email',
-        'role',
-        'is_active',
-        'first_name',
-        'last_name',
-        'created_at',
-        'updated_at',
-      ],
+      where: { id }
     });
 
     if (!user) {
@@ -113,6 +109,12 @@ export class UsersService {
     }
 
     Object.assign(user, updateUserDto);
+    
+    // Hash password if it's being updated
+    if (updateUserDto.password) {
+      user.password = await this.hashPassword(updateUserDto.password);
+    }
+    
     return this.userRepository.save(user);
   }
 
@@ -131,5 +133,23 @@ export class UsersService {
     refreshToken: string | null,
   ): Promise<void> {
     await this.userRepository.update(userId, { refresh_token: refreshToken });
+  }
+
+  /**
+   * Hash password using bcrypt
+   */
+  private async hashPassword(password: string): Promise<string> {
+    // Check if password is already hashed (starts with $2b$)
+    if (password.startsWith('$2b$')) {
+      return password;
+    }
+    return bcrypt.hash(password, 10);
+  }
+
+  /**
+   * Validate password against hashed password
+   */
+  async validatePassword(user: User, password: string): Promise<boolean> {
+    return bcrypt.compare(password, user.password);
   }
 }

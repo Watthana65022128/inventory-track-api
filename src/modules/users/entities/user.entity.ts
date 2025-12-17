@@ -5,11 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
-  BeforeInsert,
-  BeforeUpdate,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../../common/enums/role.enum';
 
 @Entity('users')
@@ -57,17 +54,4 @@ export class User {
 
   @DeleteDateColumn()
   deleted_at: Date;
-
-  @BeforeInsert()
-  @BeforeUpdate()
-  async hashPassword() {
-    if (this.password && !this.password.startsWith('$2b$')) {
-      // Only hash if password is plain text (not already hashed)
-      this.password = await bcrypt.hash(this.password, 10);
-    }
-  }
-
-  async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
-  }
 }

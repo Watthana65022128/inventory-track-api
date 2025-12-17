@@ -22,7 +22,7 @@ export class AuthService {
       return null;
     }
 
-    const isPasswordValid = await user.validatePassword(password);
+    const isPasswordValid = await this.usersService.validatePassword(user, password);
     if (!isPasswordValid) {
       return null;
     }
